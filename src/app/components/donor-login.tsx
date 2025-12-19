@@ -5,12 +5,36 @@ import { Input } from "./ui/input";
 import { Mail, Phone, Shield } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
+// 🟢 NEW IMPORT — added safely
+//import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
+
 interface DonorLoginProps {
   onLogin: () => void;
 }
 
 export function DonorLogin({ onLogin }: DonorLoginProps) {
   const [step, setStep] = useState<"login" | "otp" | "kyc">("login");
+
+  // 🟢 NEW STATE — added safely
+  const [email, setEmail] = useState("");
+
+  // 🟢 NEW FUNCTION — added safely
+  const handleSendOTP = async () => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: "http://localhost:5173",
+      },
+    });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      alert("Check your email for the login link!");
+      setStep("otp");
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -40,13 +64,17 @@ export function DonorLogin({ onLogin }: DonorLoginProps) {
                       type="email" 
                       placeholder="donor@example.com" 
                       className="pl-10"
+                      // 🟢 added safely
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
                 </div>
                 <Button 
                   className="w-full text-white" 
                   style={{ backgroundColor: '#3366FF' }}
-                  onClick={() => setStep("otp")}
+                  // 🟢 replaced only onClick handler safely
+                  onClick={handleSendOTP}
                 >
                   Send OTP
                 </Button>

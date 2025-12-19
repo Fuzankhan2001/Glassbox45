@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { supabase } from "../../lib/supabase";
 import { GlassCard } from "./glass-card";
 import { Button } from "./ui/button";
 import { Heart, Shield, TrendingUp, Users, ArrowRight, CheckCircle, Calendar, Package, Clock } from "lucide-react";
@@ -7,6 +9,8 @@ interface HomepageProps {
 }
 
 export function Homepage({ onGetStarted }: HomepageProps) {
+  
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F6FAFF' }}>
       {/* Header */}

@@ -5,6 +5,8 @@ interface GlassCardProps {
   className?: string;
   title?: string;
   subtitle?: string;
+  style?: React.CSSProperties;
+
 }
 
 export function GlassCard({ children, className = "", title, subtitle }: GlassCardProps) {

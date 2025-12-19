@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { supabase } from "../lib/supabase";
 import { useState } from "react";
 import { Homepage } from "./components/homepage";
 import { DonorLogin } from "./components/donor-login";
@@ -10,7 +12,8 @@ import { Users, ArrowLeft, LayoutDashboard, History, Package } from "lucide-reac
 type AppMode = "home" | "donor-login" | "donor-dashboard";
 type DonorView = "dashboard" | "history" | "inkind-tracker";
 
-export default function App() {
+export default function App()
+ {
   const [appMode, setAppMode] = useState<AppMode>("home");
   const [donorView, setDonorView] = useState<DonorView>("dashboard");
 
