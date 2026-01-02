@@ -27,11 +27,11 @@ import {
 // Finds the "Total" amount and Date from messy text
 const extractBillDetails = (text: string) => {
   const cleanText = text.replace(/[₹$]/g, '');
-  
+
   // Regex to look for "Total", "Amount", "Grand Total" followed by a number
   const amountRegex = /(?:total|amount|payable|grand total)[\s:]*?(\d+(?:[.,]\d{1,2})?)/i;
   const amountMatch = cleanText.match(amountRegex);
-  
+
   // Regex to look for dates (DD/MM/YYYY or similar)
   const dateRegex = /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/;
   const dateMatch = text.match(dateRegex);
@@ -50,13 +50,46 @@ export function DonorDashboardView() {
 
   // 2. Donation Form State (Auto-filled by OCR)
   const [donationAmount, setDonationAmount] = useState('');
+  // --- 🟢 INSERT START: Dynamic Donation History State ---
+  const [donations, setDonations] = useState([
+    { id: 1, date: "2026-01-02", amount: "₹500", status: "Success", receiptId: "001" },
+    { id: 2, date: "2026-01-01", amount: "₹1,000", status: "Pending", receiptId: "002" },
+    { id: 3, date: "2025-12-30", amount: "₹5,000", status: "Success", receiptId: "003" },
+  ]);
+
+  const handleProcessDonation = () => {
+    if (!donationAmount) {
+      alert("Please enter an amount first!");
+      return;
+    }
+
+    const newDonation = {
+      id: Date.now(),
+      date: new Date().toISOString().split('T')[0], // Today's date (YYYY-MM-DD)
+      amount: `₹${donationAmount}`,
+      status: "Success",
+      receiptId: `GEN-${Math.floor(Math.random() * 10000)}`
+    };
+
+    // Update the list (Newest first)
+    setDonations([newDonation, ...donations]);
+
+    // Trigger the PDF download immediately
+    downloadReceipt(newDonation.receiptId, newDonation.amount, newDonation.date);
+
+    // Clear inputs
+    setDonationAmount('');
+    handleRemoveImage(); // Clears OCR data
+    alert("Donation successful! Your receipt is downloading.");
+  };
+  // --- 🔴 INSERT END ---
 
   // 3. Smart Receipt Download Logic
-// 🟢 NEW: A4 Size JPG Generator
+  // 🟢 NEW: A4 Size JPG Generator
   const downloadReceipt = (receiptId: string, amount: string, date: string, title = "TAX RECEIPT") => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     if (!ctx) return;
 
     // 1. Set Dimensions to A4 Ratio (at ~150 DPI for good quality)
@@ -77,7 +110,7 @@ export function DonorDashboardView() {
     ctx.font = 'bold 80px Helvetica, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(title.toUpperCase(), canvas.width / 2, 180);
-    
+
     // 5. NGO Name / Subheader
     ctx.font = 'normal 30px Helvetica, Arial, sans-serif';
     ctx.fillText('GlassBox 45 Foundation', canvas.width / 2, 240);
@@ -95,17 +128,17 @@ export function DonorDashboardView() {
       ctx.font = 'bold 40px Helvetica, Arial, sans-serif';
       ctx.fillStyle = '#64748B'; // Slate 500
       ctx.fillText(label, startX, startY);
-      
+
       // Value
       ctx.font = 'normal 45px Helvetica, Arial, sans-serif';
       ctx.fillStyle = '#0F172A'; // Slate 900
       // Align value to the right side of the page
       ctx.textAlign = 'right';
       ctx.fillText(value, canvas.width - margin, startY);
-      
+
       // Reset text align for next loop
       ctx.textAlign = 'left';
-      
+
       // Light separator line
       ctx.beginPath();
       ctx.moveTo(startX, startY + 30);
@@ -113,7 +146,7 @@ export function DonorDashboardView() {
       ctx.strokeStyle = '#E2E8F0'; // Light gray line
       ctx.lineWidth = 2;
       ctx.stroke();
-      
+
       startY += lineHeight;
     };
 
@@ -126,11 +159,11 @@ export function DonorDashboardView() {
     // 7. 80G Stamp Box (Centered in lower half)
     const stampY = startY + 100;
     const boxHeight = 150;
-    
+
     // Green Background Box
-    ctx.fillStyle = '#DCFCE7'; 
+    ctx.fillStyle = '#DCFCE7';
     ctx.fillRect(margin, stampY, canvas.width - (margin * 2), boxHeight);
-    
+
     // Green Border
     ctx.strokeStyle = '#166534';
     ctx.lineWidth = 3;
@@ -141,15 +174,15 @@ export function DonorDashboardView() {
     ctx.font = 'bold 40px Helvetica, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('✓  80G Tax Exempt Compliant', canvas.width / 2, stampY + 90);
-    
+
     // 8. Official Footer (at the very bottom)
     const footerY = canvas.height - 150;
-    
+
     ctx.fillStyle = '#94A3B8'; // Light Slate
     ctx.font = 'italic 30px Helvetica, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Thank you for changing lives with GlassBox 45', canvas.width / 2, footerY);
-    
+
     ctx.font = 'normal 24px Helvetica, Arial, sans-serif';
 
     // 9. Trigger Download
@@ -220,9 +253,9 @@ export function DonorDashboardView() {
             <div>
               <label className="block text-sm text-gray-700 mb-2">Amount (₹)</label>
               {/* 🟢 INPUT BOUND TO STATE */}
-              <Input 
-                type="number" 
-                placeholder="5000" 
+              <Input
+                type="number"
+                placeholder="5000"
                 value={donationAmount}
                 onChange={(e) => setDonationAmount(e.target.value)}
               />
@@ -242,7 +275,7 @@ export function DonorDashboardView() {
                 <option>General Fund</option>
               </select>
             </div>
-            <Button className="w-full text-white cursor-pointer" style={{ backgroundColor: '#3366FF' }}>
+            <Button className="w-full text-white cursor-pointer" style={{ backgroundColor: '#3366FF' }} onClick={handleProcessDonation}>
               Donate Now
             </Button>
           </TabsContent>
@@ -293,11 +326,8 @@ export function DonorDashboardView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    { id: 1, date: "2026-01-02", amount: "₹500", status: "Success", receiptId: "001" },
-                    { id: 2, date: "2026-01-01", amount: "₹1,000", status: "Pending", receiptId: "002" },
-                    { id: 3, date: "2025-12-30", amount: "₹5,000", status: "Success", receiptId: "003" },
-                  ].map((donation) => (
+                  {/* 🟢 REPLACE THE OLD ARRAY WITH 'donations.map' */}
+                  {donations.map((donation) => (
                     <tr key={donation.id} className="border-t hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{donation.date}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">{donation.amount}</td>
@@ -332,41 +362,41 @@ export function DonorDashboardView() {
         <GlassCard title="Tax Receipts" subtitle="Download your 80G certificates">
           <div className="mt-6 space-y-4">
             {[
-              { 
-                id: "GB45-2024-0342", 
+              {
+                id: "GB45-2024-0342",
                 title: "Receipt #GB45-2024-0342",
                 subtitle: "₹5,000 • March 2024",
                 date: "March 2024",
                 amount: "₹5,000",
-                color: "#3366FF", 
+                color: "#3366FF",
                 type: "Receipt"
               },
-              { 
-                id: "GB45-2024-0298", 
+              {
+                id: "GB45-2024-0298",
                 title: "Receipt #GB45-2024-0298",
                 subtitle: "₹10,000 • February 2024",
                 date: "February 2024",
                 amount: "₹10,000",
-                color: "#14B8A6", 
+                color: "#14B8A6",
                 type: "Receipt"
               },
-              { 
-                id: "FY-2023-24", 
+              {
+                id: "FY-2023-24",
                 title: "Annual Summary 2023-24",
                 subtitle: "Total: ₹1,25,000",
                 date: "FY 2023-24",
                 amount: "₹1,25,000",
-                color: "#22C55E", 
+                color: "#22C55E",
                 type: "Annual Summary"
               }
             ].map((doc) => (
               <div key={doc.id} className="flex items-center justify-between p-1 group">
                 <div className="flex items-center gap-4">
-                  <div 
+                  <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors"
-                    style={{ 
-                      backgroundColor: `${doc.color}15`, 
-                      color: doc.color 
+                    style={{
+                      backgroundColor: `${doc.color}15`,
+                      color: doc.color
                     }}
                   >
                     <FileText className="w-6 h-6" />
@@ -376,14 +406,14 @@ export function DonorDashboardView() {
                     <p className="text-xs text-gray-500 mt-0.5">{doc.subtitle}</p>
                   </div>
                 </div>
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
+                <Button
+                  size="icon"
+                  variant="ghost"
                   className="cursor-pointer text-gray-400 hover:text-gray-900 h-8 w-8"
                   onClick={() => downloadReceipt(
-                    doc.id, 
-                    doc.amount, 
-                    doc.date, 
+                    doc.id,
+                    doc.amount,
+                    doc.date,
                     doc.type === "Annual Summary" ? "ANNUAL STATEMENT" : "TAX RECEIPT"
                   )}
                 >
@@ -400,7 +430,7 @@ export function DonorDashboardView() {
             <div>
               <p className="text-sm font-medium text-gray-900">80G Tax Exemption Available</p>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                All receipts listed above are compliant with 80G tax deduction norms. 
+                All receipts listed above are compliant with 80G tax deduction norms.
                 Please include the receipt number when filing your returns.
               </p>
             </div>
@@ -425,13 +455,13 @@ export function DonorDashboardView() {
 
                     // 🟢 INTELLIGENCE RUNS HERE
                     const details = extractBillDetails(text);
-                    
+
                     setExtractedText(text.trim());
                     setImagePreview(URL.createObjectURL(acceptedFiles[0]));
 
                     if (details.amount) {
                       setOcrStatus(`Found Total: ₹${details.amount}`);
-                      setDonationAmount(details.amount); 
+                      setDonationAmount(details.amount);
                       alert(`Smart Scan Success! We found a total of ₹${details.amount} and auto-filled the donation form.`);
                     } else {
                       setOcrStatus('Extracted (No total found)');
@@ -458,7 +488,7 @@ export function DonorDashboardView() {
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Uploaded Bill:</p>
                   <img src={imagePreview} alt="Bill" className="max-w-full h-48 object-contain rounded-lg border" />
-                  
+
                   {/* Remove Button */}
                   <Button
                     variant="outline"
