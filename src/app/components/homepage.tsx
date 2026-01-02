@@ -25,7 +25,7 @@ export function Homepage({ onGetStarted }: HomepageProps) {
               <p className="text-xs text-gray-500">Transparent Giving</p>
             </div>
           </div>
-          <Button onClick={onGetStarted} style={{ backgroundColor: '#3366FF' }} className="text-white">
+          <Button onClick={onGetStarted} style={{ backgroundColor: '#3366FF' }} className="text-white  cursor-pointer">
             Login / Sign Up
           </Button>
         </div>
@@ -42,11 +42,11 @@ export function Homepage({ onGetStarted }: HomepageProps) {
           with full audit-grade transparency.
         </p>
         <div className="flex items-center justify-center gap-4">
-          <Button onClick={onGetStarted} size="lg" style={{ backgroundColor: '#3366FF' }} className="text-white">
+          <Button onClick={onGetStarted} size="lg" style={{ backgroundColor: '#3366FF' }} className="text-white  cursor-pointer">
             Start Donating
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
-          <Button size="lg" variant="outline">
+          <Button size="lg" variant="outline" className=" cursor-pointer">  
             Learn More
           </Button>
         </div>
@@ -218,20 +218,7 @@ export function Homepage({ onGetStarted }: HomepageProps) {
       </section>
 
       {/* CTA Section */}
-      <section className="max-w-7xl mx-auto px-6 py-20">
-        <GlassCard className="text-center border-2" style={{ borderColor: '#3366FF' }}>
-          <div className="py-8">
-            <h2 className="text-gray-900 mb-3">Ready to Make a Difference?</h2>
-            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Join thousands of donors who trust GlassBox 45 for transparent, impactful giving
-            </p>
-            <Button onClick={onGetStarted} size="lg" style={{ backgroundColor: '#3366FF' }} className="text-white">
-              Get Started Now
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </div>
-        </GlassCard>
-      </section>
+
 
       {/* Footer */}
       <footer className="border-t border-white/20 backdrop-blur-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)' }}>
