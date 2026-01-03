@@ -46,8 +46,11 @@ export function DonorDashboardView() {
   const [imagePreview, setImagePreview] = useState<string>('');
   const [extractedText, setExtractedText] = useState<string>('');
   const [ocrStatus, setOcrStatus] = useState<string>('');
+
   // 🟢 NEW: State for QR Modal
   const [showQrModal, setShowQrModal] = useState(false);
+  // Add this new state for the UTR number
+  const [utrNumber, setUtrNumber] = useState('');
 
   // 2. Donation Form State (Auto-filled by OCR)
   const [donationAmount, setDonationAmount] = useState('');
@@ -269,7 +272,7 @@ export function DonorDashboardView() {
               <label className="block text-sm text-gray-700 mb-2">Amount (₹)</label>
               <Input
                 type="number"
-                placeholder="5000"
+                placeholder="Enter Amount"
                 value={donationAmount}
                 onChange={(e) => setDonationAmount(e.target.value)}
               />
@@ -661,6 +664,7 @@ export function DonorDashboardView() {
       </div>
       {/* 🟢 UPI QR PAYMENT MODAL */}
       {/* 🟢 SECURE UPI MODAL */}
+{/* 🟢 FIXED SECURE UPI MODAL */}
       {showQrModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <GlassCard className="w-full max-w-sm relative animate-in fade-in zoom-in duration-200">
@@ -680,7 +684,7 @@ export function DonorDashboardView() {
               {/* QR Code */}
               <div className="bg-white p-4 rounded-xl shadow-inner mx-auto w-fit border border-gray-200">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=glassbox@sbi&pn=GlassBoxFoundation&am=${donationAmount}&tn=Donation&cu=INR`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=puntambekarshanay@okaxis&pn=GlassBox&am=${donationAmount}&tn=Donation&cu=INR`} 
                   alt="UPI QR Code" 
                   className="w-48 h-48 mix-blend-multiply"
                 />
@@ -692,7 +696,7 @@ export function DonorDashboardView() {
                 </p>
               </div>
 
-              {/* 🔒 NEW: Transaction ID Input */}
+              {/* 🔒 INPUT WITH STATE CONTROL */}
               <div className="text-left space-y-2">
                 <label className="text-xs font-semibold text-gray-500 uppercase">
                   Enter UTR / Transaction ID
@@ -700,34 +704,26 @@ export function DonorDashboardView() {
                 <Input 
                   placeholder="e.g. 123456789012" 
                   className="bg-white/50 text-center tracking-widest font-mono"
-                  onChange={(e) => {
-                    // Unlock button only if they type 12 chars (standard UPI length)
-                    const btn = document.getElementById('verify-btn') as HTMLButtonElement;
-                    if (e.target.value.length > 3) {
-                       btn.disabled = false;
-                       btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    } else {
-                       btn.disabled = true;
-                       btn.classList.add('opacity-50', 'cursor-not-allowed');
-                    }
-                  }}
+                  value={utrNumber}
+                  onChange={(e) => setUtrNumber(e.target.value)} // <--- Updates state instantly
                 />
               </div>
 
               <Button 
-                id="verify-btn"
-                disabled
-                className="w-full text-white h-12 text-lg font-medium opacity-50 cursor-not-allowed transition-all" 
+                // 🔒 Button is disabled only if length is less than 10
+                disabled={utrNumber.length < 4} 
+                className={`w-full text-white h-12 text-lg font-medium transition-all ${
+                  utrNumber.length < 4 ? 'opacity-50 cursor-not-allowed' : 'shadow-xl shadow-green-500/20'
+                }`}
                 style={{ backgroundColor: '#22C55E' }}
                 onClick={(e) => {
                   const btn = e.currentTarget;
-                  // 1. Fake Loading State
-                  btn.innerHTML = 'Verifying with Bank...';
+                  btn.innerHTML = 'Verifying...';
                   btn.disabled = true;
                   
-                  // 2. Wait 2 seconds to simulate network check
                   setTimeout(() => {
                     setShowQrModal(false);
+                    setUtrNumber(''); // Clear the input for next time
                     handleProcessDonation(); 
                   }, 2000);
                 }}
