@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import jsPDF from 'jspdf';
+// import jsPDF from 'jspdf'; // Not needed since we use Canvas for receipts
 import Dropzone from 'react-dropzone';
 import { createWorker } from 'tesseract.js';
 import { GlassCard } from "./glass-card";
@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 
 // 🟢 HELPER: OCR Intelligence Logic
-// Finds the "Total" amount and Date from messy text
 const extractBillDetails = (text: string) => {
   const cleanText = text.replace(/[₹$]/g, '');
 
@@ -47,16 +46,26 @@ export function DonorDashboardView() {
   const [imagePreview, setImagePreview] = useState<string>('');
   const [extractedText, setExtractedText] = useState<string>('');
   const [ocrStatus, setOcrStatus] = useState<string>('');
+  // 🟢 NEW: State for QR Modal
+  const [showQrModal, setShowQrModal] = useState(false);
 
   // 2. Donation Form State (Auto-filled by OCR)
   const [donationAmount, setDonationAmount] = useState('');
-  // --- 🟢 INSERT START: Dynamic Donation History State ---
+
+  // 3. Donation History State
   const [donations, setDonations] = useState([
     { id: 1, date: "2026-01-02", amount: "₹500", status: "Success", receiptId: "001" },
     { id: 2, date: "2026-01-01", amount: "₹1,000", status: "Pending", receiptId: "002" },
     { id: 3, date: "2025-12-30", amount: "₹5,000", status: "Success", receiptId: "003" },
   ]);
 
+  // 🟢 4. NEW: State for Role 3 (Donation Forms)
+  const [inkindForm, setInkindForm] = useState({ item: 'Blankets', quantity: '', desc: '' });
+  const [serviceForm, setServiceForm] = useState({ skill: 'Teaching', hours: '', availability: '' });
+
+  // --- HANDLERS ---
+
+  // Handle Money Donation
   const handleProcessDonation = () => {
     if (!donationAmount) {
       alert("Please enter an amount first!");
@@ -65,85 +74,103 @@ export function DonorDashboardView() {
 
     const newDonation = {
       id: Date.now(),
-      date: new Date().toISOString().split('T')[0], // Today's date (YYYY-MM-DD)
+      date: new Date().toISOString().split('T')[0],
       amount: `₹${donationAmount}`,
       status: "Success",
       receiptId: `GEN-${Math.floor(Math.random() * 10000)}`
     };
 
-    // Update the list (Newest first)
     setDonations([newDonation, ...donations]);
-
-    // Trigger the PDF download immediately
     downloadReceipt(newDonation.receiptId, newDonation.amount, newDonation.date);
-
-    // Clear inputs
     setDonationAmount('');
-    handleRemoveImage(); // Clears OCR data
+    handleRemoveImage();
     alert("Donation successful! Your receipt is downloading.");
   };
-  // --- 🔴 INSERT END ---
 
-  // 3. Smart Receipt Download Logic
-  // 🟢 NEW: A4 Size JPG Generator
+  // 🟢 NEW: Handle In-Kind Submission
+  const handleInKindSubmit = () => {
+    if (!inkindForm.quantity) return alert("Please specify a quantity.");
+
+    const newDonation = {
+      id: Date.now(),
+      date: new Date().toISOString().split('T')[0],
+      amount: `${inkindForm.quantity}x ${inkindForm.item}`,
+      status: "Pending Pickup",
+      receiptId: `GIFT-${Math.floor(Math.random() * 1000)}`
+    };
+
+    setDonations([newDonation, ...donations]);
+    alert(`Thank you! We have received your request to donate ${inkindForm.quantity} ${inkindForm.item}.`);
+    setInkindForm({ ...inkindForm, quantity: '', desc: '' }); // Reset form
+  };
+
+  // 🟢 NEW: Handle Service Submission
+  const handleServiceSubmit = () => {
+    if (!serviceForm.hours) return alert("Please specify hours.");
+
+    const newDonation = {
+      id: Date.now(),
+      date: new Date().toISOString().split('T')[0],
+      amount: `${serviceForm.hours} Hours (${serviceForm.skill})`,
+      status: "Scheduled",
+      receiptId: `SRVC-${Math.floor(Math.random() * 1000)}`
+    };
+
+    setDonations([newDonation, ...donations]);
+    alert(`Awesome! You are signed up to volunteer for ${serviceForm.hours} hours.`);
+    setServiceForm({ ...serviceForm, hours: '', availability: '' }); // Reset form
+  };
+
+  // Receipt Download Logic (Canvas)
   const downloadReceipt = (receiptId: string, amount: string, date: string, title = "TAX RECEIPT") => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
     if (!ctx) return;
 
-    // 1. Set Dimensions to A4 Ratio (at ~150 DPI for good quality)
-    // Width: 1240px, Height: 1754px
     canvas.width = 1240;
     canvas.height = 1754;
 
-    // 2. White Paper Background
+    // Background
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 3. Header (Blue Bar)
+    // Header
     ctx.fillStyle = '#3366FF';
-    ctx.fillRect(0, 0, canvas.width, 300); // Taller header
+    ctx.fillRect(0, 0, canvas.width, 300);
 
-    // 4. Header Text
+    // Header Text
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 80px Helvetica, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(title.toUpperCase(), canvas.width / 2, 180);
 
-    // 5. NGO Name / Subheader
+    // Subheader
     ctx.font = 'normal 30px Helvetica, Arial, sans-serif';
     ctx.fillText('GlassBox 45 Foundation', canvas.width / 2, 240);
 
-    // 6. Content Text Setup
+    // Content
     ctx.textAlign = 'left';
-    const margin = 100; // Standard document margin
+    const margin = 100;
     const startX = margin;
-    let startY = 450; // Start lower down the page
-    const lineHeight = 100; // More spacing between lines
+    let startY = 450;
+    const lineHeight = 100;
 
-    // Helper to draw label: value pairs with a separator line
     const drawRow = (label: string, value: string) => {
-      // Label
       ctx.font = 'bold 40px Helvetica, Arial, sans-serif';
-      ctx.fillStyle = '#64748B'; // Slate 500
+      ctx.fillStyle = '#64748B';
       ctx.fillText(label, startX, startY);
 
-      // Value
       ctx.font = 'normal 45px Helvetica, Arial, sans-serif';
-      ctx.fillStyle = '#0F172A'; // Slate 900
-      // Align value to the right side of the page
+      ctx.fillStyle = '#0F172A';
       ctx.textAlign = 'right';
       ctx.fillText(value, canvas.width - margin, startY);
 
-      // Reset text align for next loop
       ctx.textAlign = 'left';
-
-      // Light separator line
       ctx.beginPath();
       ctx.moveTo(startX, startY + 30);
       ctx.lineTo(canvas.width - margin, startY + 30);
-      ctx.strokeStyle = '#E2E8F0'; // Light gray line
+      ctx.strokeStyle = '#E2E8F0';
       ctx.lineWidth = 2;
       ctx.stroke();
 
@@ -156,49 +183,36 @@ export function DonorDashboardView() {
     drawRow('Donation Amount:', amount);
     drawRow('Payment Mode:', 'Online Transfer');
 
-    // 7. 80G Stamp Box (Centered in lower half)
+    // Stamp
     const stampY = startY + 100;
     const boxHeight = 150;
-
-    // Green Background Box
     ctx.fillStyle = '#DCFCE7';
     ctx.fillRect(margin, stampY, canvas.width - (margin * 2), boxHeight);
-
-    // Green Border
     ctx.strokeStyle = '#166534';
     ctx.lineWidth = 3;
     ctx.strokeRect(margin, stampY, canvas.width - (margin * 2), boxHeight);
-
-    // Checkmark & Text
-    ctx.fillStyle = '#166534'; // Dark Green
+    ctx.fillStyle = '#166534';
     ctx.font = 'bold 40px Helvetica, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('✓  80G Tax Exempt Compliant', canvas.width / 2, stampY + 90);
 
-    // 8. Official Footer (at the very bottom)
+    // Footer
     const footerY = canvas.height - 150;
-
-    ctx.fillStyle = '#94A3B8'; // Light Slate
+    ctx.fillStyle = '#94A3B8';
     ctx.font = 'italic 30px Helvetica, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Thank you for changing lives with GlassBox 45', canvas.width / 2, footerY);
 
-    ctx.font = 'normal 24px Helvetica, Arial, sans-serif';
-
-    // 9. Trigger Download
     const link = document.createElement('a');
     link.download = `${title.replace(' ', '_')}_${receiptId}.jpg`;
     link.href = canvas.toDataURL('image/jpeg', 0.9);
     link.click();
   };
 
-  // 4. Remove Image Handler
   const handleRemoveImage = () => {
     setImagePreview('');
     setExtractedText('');
     setOcrStatus('');
-    // Optional: Reset donation amount if you want
-    // setDonationAmount(''); 
   };
 
   return (
@@ -249,17 +263,16 @@ export function DonorDashboardView() {
             <TabsTrigger value="service" className="cursor-pointer">Service</TabsTrigger>
           </TabsList>
 
+          {/* MONEY TAB */}
           <TabsContent value="money" className="space-y-4 mt-4">
             <div>
               <label className="block text-sm text-gray-700 mb-2">Amount (₹)</label>
-              {/* 🟢 INPUT BOUND TO STATE */}
               <Input
                 type="number"
                 placeholder="5000"
                 value={donationAmount}
                 onChange={(e) => setDonationAmount(e.target.value)}
               />
-              {/* Auto-fill Badge */}
               {donationAmount && ocrStatus.includes('Found Total') && (
                 <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" /> Auto-filled from your uploaded bill
@@ -275,37 +288,96 @@ export function DonorDashboardView() {
                 <option>General Fund</option>
               </select>
             </div>
-            <Button className="w-full text-white cursor-pointer" style={{ backgroundColor: '#3366FF' }} onClick={handleProcessDonation}>
-              Donate Now
+            <Button
+              className="w-full text-white cursor-pointer"
+              style={{ backgroundColor: '#3366FF' }}
+              onClick={() => {
+                if (!donationAmount) return alert("Please enter an amount first!");
+                setShowQrModal(true); // <--- Opens the QR Popup
+              }}
+            >
+              Donate via UPI / QR
             </Button>
           </TabsContent>
 
+          {/* 🟢 UPDATED: IN-KIND TAB */}
           <TabsContent value="inkind" className="space-y-4 mt-4">
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">Item Type</label>
-              <select className="w-full p-2 rounded-lg border border-gray-200 bg-white">
-                <option>Blankets</option>
-                <option>School Uniforms</option>
-                <option>Books</option>
-                <option>Food Items</option>
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Item Type</label>
+                <select
+                  className="w-full p-2 rounded-lg border border-gray-200 bg-white cursor-pointer"
+                  value={inkindForm.item}
+                  onChange={(e) => setInkindForm({ ...inkindForm, item: e.target.value })}
+                >
+                  <option>Blankets</option>
+                  <option>School Uniforms</option>
+                  <option>Books</option>
+                  <option>Food Items</option>
+                  <option>Medical Supplies</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Quantity</label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 50"
+                  value={inkindForm.quantity}
+                  onChange={(e) => setInkindForm({ ...inkindForm, quantity: e.target.value })}
+                />
+              </div>
             </div>
-            <Button className="w-full text-white cursor-pointer" style={{ backgroundColor: '#14B8A6' }}>
-              Submit Request
+            <div>
+              <label className="block text-sm text-gray-700 mb-2">Description / Condition</label>
+              <Textarea
+                placeholder="Brand new, sealed in box..."
+                className="bg-white"
+                value={inkindForm.desc}
+                onChange={(e) => setInkindForm({ ...inkindForm, desc: e.target.value })}
+              />
+            </div>
+            <Button
+              className="w-full text-white cursor-pointer"
+              style={{ backgroundColor: '#14B8A6' }}
+              onClick={handleInKindSubmit}
+            >
+              Submit In-Kind Request
             </Button>
           </TabsContent>
 
+          {/* 🟢 UPDATED: SERVICE TAB */}
           <TabsContent value="service" className="space-y-4 mt-4">
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">Service Type</label>
-              <select className="w-full p-2 rounded-lg border border-gray-200 bg-white">
-                <option>Teaching</option>
-                <option>Elderly Care</option>
-                <option>Skill Training</option>
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Skill / Service</label>
+                <select
+                  className="w-full p-2 rounded-lg border border-gray-200 bg-white cursor-pointer"
+                  value={serviceForm.skill}
+                  onChange={(e) => setServiceForm({ ...serviceForm, skill: e.target.value })}
+                >
+                  <option>Teaching</option>
+                  <option>Elderly Care</option>
+                  <option>Skill Training</option>
+                  <option>Medical Checkup</option>
+                  <option>Logistics Support</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Hours Pledged</label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 4"
+                  value={serviceForm.hours}
+                  onChange={(e) => setServiceForm({ ...serviceForm, hours: e.target.value })}
+                />
+              </div>
             </div>
-            <Button className="w-full text-white cursor-pointer" style={{ backgroundColor: '#22C55E' }}>
-              Submit Application
+            <Button
+              className="w-full text-white cursor-pointer"
+              style={{ backgroundColor: '#22C55E' }}
+              onClick={handleServiceSubmit}
+            >
+              Volunteer Now
             </Button>
           </TabsContent>
         </Tabs>
@@ -326,7 +398,6 @@ export function DonorDashboardView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* 🟢 REPLACE THE OLD ARRAY WITH 'donations.map' */}
                   {donations.map((donation) => (
                     <tr key={donation.id} className="border-t hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{donation.date}</td>
@@ -453,7 +524,6 @@ export function DonorDashboardView() {
                     const { data: { text } } = await worker.recognize(acceptedFiles[0]);
                     await worker.terminate();
 
-                    // 🟢 INTELLIGENCE RUNS HERE
                     const details = extractBillDetails(text);
 
                     setExtractedText(text.trim());
@@ -489,7 +559,6 @@ export function DonorDashboardView() {
                   <p className="text-sm font-medium text-gray-700 mb-2">Uploaded Bill:</p>
                   <img src={imagePreview} alt="Bill" className="max-w-full h-48 object-contain rounded-lg border" />
 
-                  {/* Remove Button */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -590,6 +659,85 @@ export function DonorDashboardView() {
           </div>
         </GlassCard>
       </div>
+      {/* 🟢 UPI QR PAYMENT MODAL */}
+      {/* 🟢 SECURE UPI MODAL */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <GlassCard className="w-full max-w-sm relative animate-in fade-in zoom-in duration-200">
+            <button 
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900"
+            >
+              ✕
+            </button>
+
+            <div className="text-center space-y-6 pt-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Scan to Donate</h3>
+                <p className="text-sm text-gray-500">Scan with any UPI App</p>
+              </div>
+
+              {/* QR Code */}
+              <div className="bg-white p-4 rounded-xl shadow-inner mx-auto w-fit border border-gray-200">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=glassbox@sbi&pn=GlassBoxFoundation&am=${donationAmount}&tn=Donation&cu=INR`} 
+                  alt="UPI QR Code" 
+                  className="w-48 h-48 mix-blend-multiply"
+                />
+              </div>
+
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-sm text-blue-700 font-medium">
+                  Amount: <span className="font-bold text-lg">₹{donationAmount}</span>
+                </p>
+              </div>
+
+              {/* 🔒 NEW: Transaction ID Input */}
+              <div className="text-left space-y-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase">
+                  Enter UTR / Transaction ID
+                </label>
+                <Input 
+                  placeholder="e.g. 123456789012" 
+                  className="bg-white/50 text-center tracking-widest font-mono"
+                  onChange={(e) => {
+                    // Unlock button only if they type 12 chars (standard UPI length)
+                    const btn = document.getElementById('verify-btn') as HTMLButtonElement;
+                    if (e.target.value.length > 3) {
+                       btn.disabled = false;
+                       btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    } else {
+                       btn.disabled = true;
+                       btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
+                  }}
+                />
+              </div>
+
+              <Button 
+                id="verify-btn"
+                disabled
+                className="w-full text-white h-12 text-lg font-medium opacity-50 cursor-not-allowed transition-all" 
+                style={{ backgroundColor: '#22C55E' }}
+                onClick={(e) => {
+                  const btn = e.currentTarget;
+                  // 1. Fake Loading State
+                  btn.innerHTML = 'Verifying with Bank...';
+                  btn.disabled = true;
+                  
+                  // 2. Wait 2 seconds to simulate network check
+                  setTimeout(() => {
+                    setShowQrModal(false);
+                    handleProcessDonation(); 
+                  }, 2000);
+                }}
+              >
+                Verify & Download Receipt
+              </Button>
+            </div>
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 }
