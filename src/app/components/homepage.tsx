@@ -1,268 +1,107 @@
-import { useEffect } from "react";
-import { supabase } from "../../lib/supabase";
-import { GlassCard } from "./glass-card";
 import { Button } from "./ui/button";
-import { Heart, Shield, TrendingUp, Users, ArrowRight, CheckCircle, Calendar, Package, Clock } from "lucide-react";
+import { ShieldCheck, ArrowRight, TrendingUp, Users, Shield, CheckCircle } from "lucide-react";
+import { GlassCard } from "./glass-card";
 
+// 🟢 Define props to accept both login actions
 interface HomepageProps {
-  onGetStarted: () => void;
+  onGetStarted: () => void; // For Donors
+  onAdminLogin: () => void; // For Admins
 }
 
-export function Homepage({ onGetStarted }: HomepageProps) {
-  
-
+export function Homepage({ onGetStarted, onAdminLogin }: HomepageProps) {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#F6FAFF' }}>
-      {/* Header */}
-      <header className="border-b border-white/20 backdrop-blur-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)' }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-[#F6FAFF] font-sans">
+      
+      {/* 🟢 HEADER / NAVIGATION */}
+      <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#3366FF' }}>
-              <Shield className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 bg-[#3366FF] rounded-xl flex items-center justify-center text-white">
+              <ShieldCheck size={24} />
             </div>
             <div>
-              <h2 className="text-gray-900">GlassBox 45</h2>
-              <p className="text-xs text-gray-500">Transparent Giving</p>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">GlassBox 45</h1>
+              <p className="text-xs text-slate-500 font-medium">Transparent Giving</p>
             </div>
           </div>
-          <Button onClick={onGetStarted} style={{ backgroundColor: '#3366FF' }} className="text-white  cursor-pointer">
-            Login / Sign Up
-          </Button>
-        </div>
-      </header>
 
-      {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-6 py-20 text-center">
-        <div className="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: '#3366FF' }}>
-          <Heart className="w-10 h-10 text-white" />
-        </div>
-        <h1 className="text-gray-900 mb-4">Donate with Complete Transparency</h1>
-        <p className="text-gray-600 max-w-2xl mx-auto mb-8">
-          Every rupee tracked. Every impact visible. GlassBox 45 ensures your donations reach where they're needed most,
-          with full audit-grade transparency.
-        </p>
-        <div className="flex items-center justify-center gap-4">
-          <Button onClick={onGetStarted} size="lg" style={{ backgroundColor: '#3366FF' }} className="text-white  cursor-pointer">
-            Start Donating
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
-          <Button size="lg" variant="outline" className=" cursor-pointer">  
-            Learn More
-          </Button>
-        </div>
-      </section>
+          <div className="flex items-center gap-4">
+            {/* 🟢 ADMIN BUTTON (Ghost Style) */}
+            <button 
+              onClick={onAdminLogin}
+              className="text-sm font-semibold text-slate-500 hover:text-slate-900 px-4 py-2 rounded-lg hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Shield size={16}/> Staff Login
+            </button>
 
-      {/* Stats Section */}
-      <section className="max-w-7xl mx-auto px-6 py-12">
+            {/* DONOR BUTTON (Primary Style) */}
+            <Button 
+              onClick={onGetStarted}
+              className="bg-[#3366FF] hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+            >
+              Donor Login
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      {/* HERO SECTION */}
+      <main className="max-w-7xl mx-auto px-6 pt-20 pb-32">
+        <div className="text-center max-w-3xl mx-auto mb-20">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-700 text-sm font-bold mb-8 animate-fade-in-up">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+            Live: 100% Impact Tracking Active
+          </div>
+          
+          <h1 className="text-6xl font-extrabold text-slate-900 leading-tight mb-6">
+            Donate with <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3366FF] to-[#00C2FF]">Absolute Clarity.</span>
+          </h1>
+          
+          <p className="text-xl text-slate-500 leading-relaxed mb-10">
+            Every rupee tracked. Every impact visible. GlassBox 45 ensures your donations reach where they're needed most, with full audit-grade transparency.
+          </p>
+
+          <div className="flex justify-center gap-4">
+            <Button 
+              onClick={onGetStarted}
+              className="h-14 px-8 text-lg bg-[#3366FF] hover:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-600/20 transition-all hover:scale-105 cursor-pointer"
+            >
+              Start Donating <ArrowRight className="ml-2"/>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-14 px-8 text-lg border-2 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 rounded-2xl cursor-pointer"
+            >
+              How it Works
+            </Button>
+          </div>
+        </div>
+
+        {/* STATS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <GlassCard className="text-center">
-            <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(51, 102, 255, 0.1)' }}>
-              <TrendingUp className="w-6 h-6" style={{ color: '#3366FF' }} />
-            </div>
-            <h3 className="text-gray-900">₹2.4 Cr+</h3>
-            <p className="text-sm text-gray-500 mt-1">Total Donations</p>
-          </GlassCard>
-
-          <GlassCard className="text-center">
-            <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(20, 184, 166, 0.1)' }}>
-              <Users className="w-6 h-6" style={{ color: '#14B8A6' }} />
-            </div>
-            <h3 className="text-gray-900">5,240</h3>
-            <p className="text-sm text-gray-500 mt-1">Active Donors</p>
-          </GlassCard>
-
-          <GlassCard className="text-center">
-            <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
-              <CheckCircle className="w-6 h-6" style={{ color: '#22C55E' }} />
-            </div>
-            <h3 className="text-gray-900">12,580</h3>
-            <p className="text-sm text-gray-500 mt-1">Lives Impacted</p>
-          </GlassCard>
-
-          <GlassCard className="text-center">
-            <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(51, 102, 255, 0.1)' }}>
-              <Shield className="w-6 h-6" style={{ color: '#3366FF' }} />
-            </div>
-            <h3 className="text-gray-900">100%</h3>
-            <p className="text-sm text-gray-500 mt-1">Transparency</p>
-          </GlassCard>
+          <StatCard icon={<TrendingUp className="text-[#3366FF]"/>} value="₹2.4 Cr+" label="Total Donations" />
+          <StatCard icon={<Users className="text-[#14B8A6]"/>} value="5,240" label="Active Donors" />
+          <StatCard icon={<CheckCircle className="text-[#22C55E]"/>} value="12,580" label="Lives Impacted" />
+          <StatCard icon={<ShieldCheck className="text-[#8B5CF6]"/>} value="100%" label="Transparent" />
         </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-gray-900 mb-3">How GlassBox 45 Works</h2>
-          <p className="text-gray-600">Your donation journey, from contribution to impact</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <GlassCard className="text-center">
-            <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: '#3366FF' }}>
-              <Heart className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-gray-900 mb-2">1. Donate</h3>
-            <p className="text-sm text-gray-600">
-              Contribute money, in-kind items, or volunteer services through our secure platform
-            </p>
-          </GlassCard>
-
-          <GlassCard className="text-center">
-            <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: '#14B8A6' }}>
-              <Shield className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-gray-900 mb-2">2. Track</h3>
-            <p className="text-sm text-gray-600">
-              Follow your donation's journey in real-time with complete transparency and verified vendors
-            </p>
-          </GlassCard>
-
-          <GlassCard className="text-center">
-            <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: '#22C55E' }}>
-              <TrendingUp className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-gray-900 mb-2">3. See Impact</h3>
-            <p className="text-sm text-gray-600">
-              View detailed reports, download tax receipts, and witness the change you're creating
-            </p>
-          </GlassCard>
-        </div>
-      </section>
-
-      {/* Donation Options */}
-      <section className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-gray-900 mb-3">Ways to Contribute</h2>
-          <p className="text-gray-600">Choose how you'd like to make a difference</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(51, 102, 255, 0.1)' }}>
-                <Heart className="w-6 h-6" style={{ color: '#3366FF' }} />
-              </div>
-              <h3 className="text-gray-900">Money</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Direct financial contributions for education, healthcare, and emergency relief programs
-            </p>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" style={{ color: '#22C55E' }} />
-                80G Tax Benefits
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" style={{ color: '#22C55E' }} />
-                Instant Receipts
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" style={{ color: '#22C55E' }} />
-                Full Tracking
-              </li>
-            </ul>
-          </GlassCard>
-
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(20, 184, 166, 0.1)' }}>
-                <Package className="w-6 h-6" style={{ color: '#14B8A6' }} />
-              </div>
-              <h3 className="text-gray-900">In-Kind</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Donate items like blankets, uniforms, books, and medical supplies directly to beneficiaries
-            </p>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" style={{ color: '#22C55E' }} />
-                Request Approval
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" style={{ color: '#22C55E' }} />
-                Pickup Options
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" style={{ color: '#22C55E' }} />
-                Delivery Status
-              </li>
-            </ul>
-          </GlassCard>
-
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
-                <Clock className="w-6 h-6" style={{ color: '#22C55E' }} />
-              </div>
-              <h3 className="text-gray-900">Services</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Volunteer your time and skills for teaching, elderly care, and community development
-            </p>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" style={{ color: '#22C55E' }} />
-                Flexible Hours
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" style={{ color: '#22C55E' }} />
-                Skill Matching
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" style={{ color: '#22C55E' }} />
-                Impact Reports
-              </li>
-            </ul>
-          </GlassCard>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-
-
-      {/* Footer */}
-      <footer className="border-t border-white/20 backdrop-blur-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)' }}>
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#3366FF' }}>
-                  <Shield className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-gray-900">GlassBox 45</h3>
-              </div>
-              <p className="text-sm text-gray-600">Transparent giving for a better tomorrow</p>
-            </div>
-            <div>
-              <h4 className="text-gray-900 mb-3">About</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-blue-600">Our Mission</a></li>
-                <li><a href="#" className="hover:text-blue-600">How It Works</a></li>
-                <li><a href="#" className="hover:text-blue-600">Impact Stories</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-gray-900 mb-3">Support</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-blue-600">Help Center</a></li>
-                <li><a href="#" className="hover:text-blue-600">Contact Us</a></li>
-                <li><a href="#" className="hover:text-blue-600">FAQs</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-gray-900 mb-3">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-blue-600">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-blue-600">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-blue-600">80G Certificate</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-8 pt-8 border-t border-white/20 text-center text-sm text-gray-500">
-            © 2024 GlassBox 45. All rights reserved. Built for transparency.
-          </div>
-        </div>
+      </main>
+      
+      {/* Footer (Simplified for brevity) */}
+      <footer className="border-t border-gray-200 py-8 text-center text-slate-400 text-sm">
+        © 2026 GlassBox 45. Built for Trust.
       </footer>
+    </div>
+  );
+}
+
+function StatCard({ icon, value, label }: any) {
+  return (
+    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 text-center hover:shadow-2xl transition-all hover:-translate-y-1 group">
+      <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+        <div className="w-8 h-8">{icon}</div>
+      </div>
+      <h3 className="text-3xl font-bold text-slate-900 mb-1">{value}</h3>
+      <p className="text-sm font-medium text-slate-500">{label}</p>
     </div>
   );
 }
