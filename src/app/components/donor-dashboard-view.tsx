@@ -53,6 +53,27 @@ export function DonorDashboardView() {
       status: "Success",
       receiptId: `GEN-${Math.floor(Math.random() * 10000)}`
     };
+    const adminDonation = {
+  id: crypto.randomUUID(),
+  donorName: "Fuzzy",
+  amount: Number(donationAmount),
+  purpose: "Education", // we’ll improve this later
+  type: "Money",
+  status: "Pending",
+  createdAt: new Date().toISOString()
+};
+  const existingDonations = JSON.parse(
+  localStorage.getItem("demo_donations") || "[]"
+);
+
+existingDonations.unshift(adminDonation);
+
+localStorage.setItem(
+  "demo_donations",
+  JSON.stringify(existingDonations)
+);
+
+
     setDonations([newDonation, ...donations]);
     downloadReceipt(newDonation.receiptId, newDonation.amount, newDonation.date);
     setDonationAmount('');

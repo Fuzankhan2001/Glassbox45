@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Homepage } from "./components/homepage";
+import StaffLogin from "./components/staff-login";
+
 import AdminDashboardView from './components/admin-dashboard-view';
 import { DonorLogin } from "./components/donor-login";
 import { DonorDashboardView } from "./components/donor-dashboard-view";
@@ -8,7 +10,7 @@ import { InKindTrackerView } from "./components/inkind-tracker-view";
 import { Button } from "./components/ui/button";
 import { Users, ArrowLeft, LayoutDashboard, History, Package, LogOut } from "lucide-react";
 
-type AppMode = "home" | "donor-login" | "donor-dashboard" | "admin-dashboard";
+type AppMode = "home" | "donor-login" | "donor-dashboard" | "admin-login"| "admin-dashboard";
 type DonorView = "dashboard" | "history" | "inkind-tracker";
 
 export default function App() {
@@ -27,6 +29,17 @@ export default function App() {
     localStorage.removeItem("userName");
     setAppMode("home");
   };
+  // ------------------------------------------------------------------
+// ADMIN LOGIN ROUTE
+// ------------------------------------------------------------------
+if (appMode === "admin-login") {
+  return (
+    <StaffLogin
+      onSuccess={() => setAppMode("admin-dashboard")}
+      onBack={() => setAppMode("home")}
+    />
+  );
+}
 
   // ------------------------------------------------------------------
   // 1. ADMIN DASHBOARD ROUTE (Directly from Homepage "Staff Login")
@@ -55,7 +68,7 @@ export default function App() {
     return (
       <Homepage 
         onGetStarted={() => setAppMode("donor-login")} // Go to Donor Login
-        onAdminLogin={() => setAppMode("admin-dashboard")} // Go to Admin Dashboard
+        onAdminLogin={() => setAppMode("admin-login")} // Go to Admin login
       />
     );
   }

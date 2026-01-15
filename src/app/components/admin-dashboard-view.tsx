@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+//import React, { useState } from 'react';
 import { 
   LayoutDashboard, Wallet, FileCheck, AlertTriangle, TrendingUp, 
   Users, ArrowUpRight, ArrowDownRight, Ban, Calendar, Target
@@ -90,15 +92,34 @@ export default function AdminDashboardView() {
 }
 
 // 🟢 3. DASHBOARD COMPONENT (The "Overview" Tab)
+
 function AdminOverview() {
   // Correct Math: 
   // Restricted: 8,50,000 (Income) - 2,500 (Expense) = 8,47,500
   // Unrestricted: 4,00,000 (Income) - 12,000 (Expense) = 3,88,000
-  const stats = {
+  const [demoDonations, setDemoDonations] = useState<any[]>([]);
+useEffect(() => {
+  const data = localStorage.getItem("demo_donations");
+  console.log("ADMIN READ:", data);
+  if (data) {
+    setDemoDonations(JSON.parse(data));
+  }
+}, []);
+
+const stats = {
     totalAssets: "12,35,500", 
     restricted: "8,47,500", 
     unrestricted: "3,88,000" 
   };
+  const liveDonationActivity = demoDonations.map((donation) => ({
+  id: donation.id,
+  type: "income",
+  title: "Donation Received",
+  subtitle: `${donation.donorName} • ${donation.purpose}`,
+  amount: `+₹${donation.amount}`,
+  time: "Just now"
+}));
+
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -182,10 +203,11 @@ function AdminOverview() {
           
           <div className="flex-1 overflow-y-auto max-h-[350px]">
              <div className="divide-y divide-slate-50">
-               {RECENT_ACTIVITY.map((log) => (
-                 <LogItem key={log.id} {...log} />
-               ))}
-             </div>
+  {[...liveDonationActivity, ...RECENT_ACTIVITY].map((log) => (
+    <LogItem key={log.id} {...log} />
+  ))}
+</div>
+
           </div>
         </div>
 
