@@ -1,94 +1,102 @@
-import { useState } from 'react';
-import Dropzone from 'react-dropzone';
-import { createWorker } from 'tesseract.js';
-// 🟢 Ensure these match your UI component paths
+import { useState, useEffect } from 'react';
 import { GlassCard } from "./glass-card"; 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Progress } from "./ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import {
-  DollarSign, Package, Clock, Calendar, Heart, Download,
-  CheckCircle, ArrowRight, AlertTriangle, Upload, FileText, Trash2
+  IndianRupee, Package, Clock, Heart, ArrowRight, AlertTriangle, 
+  CreditCard, Landmark, Smartphone, Tag, CheckCircle2, User, Phone, Mail, MapPin, FileText, Calendar
 } from "lucide-react";
 
-// 🟢 HELPER: OCR Intelligence Logic
-const extractBillDetails = (text: string) => {
-  const cleanText = text.replace(/[₹$]/g, '');
-  // Regex to look for "Total", "Amount" followed by a number
-  const amountRegex = /(?:total|amount|payable|grand total)[\s:]*?(\d+(?:[.,]\d{1,2})?)/i;
-  const amountMatch = cleanText.match(amountRegex);
-  // Regex to look for dates
-  const dateRegex = /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/;
-  const dateMatch = text.match(dateRegex);
-
-  return {
-    amount: amountMatch ? amountMatch[1] : null,
-    date: dateMatch ? dateMatch[0] : null
-  };
-};
+// 🟢 MOCK PROJECT DATA (Synced with Admin)
+const PROJECTS = [
+  { name: "Vidya Shakti (Education)", raised: 245000, goal: 500000, color: "bg-blue-600", percent: 49 },
+  { name: "Drishti Eye Camp", raised: 150000, goal: 300000, color: "bg-emerald-500", percent: 50 },
+  { name: "Annapoorna (Hunger Relief)", raised: 180000, goal: 800000, color: "bg-orange-500", percent: 23 },
+];
 
 export function DonorDashboardView() {
-  const [imagePreview, setImagePreview] = useState<string>('');
-  const [extractedText, setExtractedText] = useState<string>('');
-  const [ocrStatus, setOcrStatus] = useState<string>('');
-  const [donationAmount, setDonationAmount] = useState('');
-  
-  // Dynamic History State
-  const [donations, setDonations] = useState([
-    { id: 1, date: "2026-01-02", amount: "₹500", status: "Success", receiptId: "001" },
-    { id: 2, date: "2026-01-01", amount: "₹1,000", status: "Pending", receiptId: "002" },
-    { id: 3, date: "2025-12-30", amount: "₹5,000", status: "Success", receiptId: "003" },
-  ]);
+  // Form State
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    address: '',
+    pan: '',
+    amount: '',
+    purpose: 'General Fund (Unrestricted)',
+    paymentMethod: 'UPI',
+    // In-Kind Specific
+    itemName: '',
+    quantity: '',
+    // Service Specific
+    serviceType: '',
+    hours: ''
+  });
 
-  const handleProcessDonation = () => {
-    if (!donationAmount) {
-      alert("Please enter an amount first!");
+  // Auto-fill Name on Load
+  useEffect(() => {
+    const savedName = localStorage.getItem('userName');
+    if (savedName) {
+      setFormData(prev => ({ ...prev, name: savedName }));
+    }
+  }, []);
+
+  const handleInputChange = (e: any) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleMoneyDonation = () => {
+    // 1. Validation
+    if (!formData.amount || !formData.name || !formData.mobile) {
+      alert("Please fill in Name, Mobile, and Amount.");
       return;
     }
-    const newDonation = {
-      id: Date.now(),
-      date: new Date().toISOString().split('T')[0],
-      amount: `₹${donationAmount}`,
-      status: "Success",
-      receiptId: `GEN-${Math.floor(Math.random() * 10000)}`
-    };
+    if (Number(formData.amount) < 100) {
+      alert("Minimum donation amount is ₹100.");
+      return;
+    }
+
+    // 2. Sync with Admin
     const adminDonation = {
-  id: crypto.randomUUID(),
-  donorName: "Fuzzy",
-  amount: Number(donationAmount),
-  purpose: "Education", // we’ll improve this later
-  type: "Money",
-  status: "Pending",
-  createdAt: new Date().toISOString()
-};
-  const existingDonations = JSON.parse(
-  localStorage.getItem("demo_donations") || "[]"
-);
+      id: crypto.randomUUID(),
+      donorName: formData.name,
+      amount: Number(formData.amount),
+      purpose: formData.purpose,
+      type: "Money",
+      status: "Success",
+      createdAt: new Date().toISOString()
+    };
 
-existingDonations.unshift(adminDonation);
+    const existingDonations = JSON.parse(localStorage.getItem("demo_donations") || "[]");
+    existingDonations.unshift(adminDonation);
+    localStorage.setItem("demo_donations", JSON.stringify(existingDonations));
 
-localStorage.setItem(
-  "demo_donations",
-  JSON.stringify(existingDonations)
-);
-
-
-    setDonations([newDonation, ...donations]);
-    downloadReceipt(newDonation.receiptId, newDonation.amount, newDonation.date);
-    setDonationAmount('');
-    handleRemoveImage();
-    alert("Donation successful! Your receipt is downloading.");
+    // 3. Generate Receipt
+    downloadReceipt(
+        `GEN-${Math.floor(Math.random() * 10000)}`, 
+        formData.amount, 
+        new Date().toISOString().split('T')[0], 
+        "TAX RECEIPT"
+    );
+    
+    setFormData(prev => ({ ...prev, amount: '' }));
+    alert("Donation successful! Your 80G Receipt is downloading.");
   };
 
-  const handleRemoveImage = () => {
-    setImagePreview('');
-    setExtractedText('');
-    setOcrStatus('');
+  const handleInKindSubmit = () => {
+      alert("Thank you! Your In-Kind donation request has been submitted for approval.");
+      setFormData(prev => ({ ...prev, itemName: '', quantity: '' }));
   };
 
-  // 🟢 SMART RECEIPT GENERATOR
-  const downloadReceipt = (receiptId: string, amount: string, date: string, title = "TAX RECEIPT") => {
+  const handleServiceSubmit = () => {
+      alert("Thank you! Your volunteering request has been logged.");
+      setFormData(prev => ({ ...prev, serviceType: '', hours: '' }));
+  };
+
+  // 🟢 RECEIPT GENERATOR
+  const downloadReceipt = (receiptId: string, amount: string, date: string, title: string) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -99,19 +107,17 @@ localStorage.setItem(
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Header
     ctx.fillStyle = '#3366FF';
     ctx.fillRect(0, 0, canvas.width, 300);
 
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 80px Helvetica, Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(title.toUpperCase(), canvas.width / 2, 180);
+    ctx.fillText(title, canvas.width / 2, 180);
 
     ctx.font = 'normal 30px Helvetica, Arial, sans-serif';
     ctx.fillText('GlassBox 45 Foundation', canvas.width / 2, 240);
 
-    // Content
     ctx.textAlign = 'left';
     const margin = 100;
     const startX = margin;
@@ -140,12 +146,11 @@ localStorage.setItem(
     };
 
     drawRow('Receipt Reference:', receiptId);
-    drawRow('Donor Name:', localStorage.getItem('userName') || 'Valued Donor');
-    drawRow('Date of Donation:', date);
-    drawRow('Donation Amount:', amount);
-    drawRow('Payment Mode:', 'Online Transfer');
+    drawRow('Donor Name:', formData.name);
+    drawRow('Date:', date);
+    drawRow('Amount:', `Rs. ${amount}`);
+    drawRow('Project:', formData.purpose);
 
-    // 80G Stamp
     const stampY = startY + 100;
     const boxHeight = 150;
     ctx.fillStyle = '#DCFCE7';
@@ -158,149 +163,231 @@ localStorage.setItem(
     ctx.textAlign = 'center';
     ctx.fillText('✓  80G Tax Exempt Compliant', canvas.width / 2, stampY + 90);
 
-    // Footer
-    const footerY = canvas.height - 150;
-    ctx.fillStyle = '#94A3B8';
-    ctx.font = 'italic 30px Helvetica, Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Thank you for changing lives with GlassBox 45', canvas.width / 2, footerY);
-
     const link = document.createElement('a');
-    link.download = `${title.replace(' ', '_')}_${receiptId}.jpg`;
+    link.download = `${title}_${receiptId}.jpg`;
     link.href = canvas.toDataURL('image/jpeg', 0.9);
     link.click();
   };
   
   return (
-    <div className="space-y-6">
-      {/* Disaster Mode Banner */}
-      <GlassCard className="border-2" style={{ borderColor: '#d97706', backgroundColor: 'rgba(251, 146, 60, 0.1)' }}>
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-orange-100">
-            <AlertTriangle className="w-6 h-6 text-orange-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-gray-900 mb-1">Emergency Relief Campaign Active</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Flood relief efforts underway in Gujarat. 500 families need immediate assistance.
-            </p>
-            <Button style={{ backgroundColor: '#d97706' }} className="text-white cursor-pointer">
-              Donate to Emergency Relief <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </div>
-      </GlassCard>
-
-      {/* Welcome Header */}
-      <GlassCard className="border-2" style={{ borderColor: '#3366FF' }}>
+    <div className="space-y-8">
+      
+      {/* 1. WELCOME & STATS */}
+      <GlassCard className="border-2 border-blue-100 bg-gradient-to-r from-blue-50 to-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-gray-900">Welcome back, {localStorage.getItem('userName') || 'Rajesh'}!</h2>
-            <p className="text-gray-500 mt-1">Thank you for your continued support</p>
+            <h2 className="text-xl font-bold text-gray-900">Welcome back, {formData.name || 'Donor'}!</h2>
+            <p className="text-gray-500 mt-1 text-sm">Your contributions are changing lives.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Heart className="w-6 h-6" style={{ color: '#22C55E' }} />
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-blue-100">
+            <div className="p-2 bg-emerald-100 rounded-full"><Heart className="w-5 h-5 text-emerald-600" /></div>
             <div>
-              <p className="text-sm text-gray-500">Total Impact</p>
-              <p className="text-gray-900">₹1,25,000</p>
+              <p className="text-xs text-gray-500 font-bold uppercase">Your Impact</p>
+              <p className="text-lg font-bold text-gray-900">₹1,25,000</p>
             </div>
           </div>
         </div>
       </GlassCard>
 
-      {/* Donate Tabs */}
-      <GlassCard title="Make a Donation" subtitle="Choose how you'd like to contribute">
-        <Tabs defaultValue="money" className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="money" className="cursor-pointer">Money</TabsTrigger>
-            <TabsTrigger value="inkind" className="cursor-pointer">In-Kind</TabsTrigger>
-            <TabsTrigger value="service" className="cursor-pointer">Service</TabsTrigger>
+      {/* 2. LIVE PROJECT FUNDING (New Section) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+            <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <TargetIcon /> Live Project Funding Goals
+            </h3>
+            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-6 shadow-sm">
+                {PROJECTS.map((project, idx) => (
+                <div key={idx}>
+                    <div className="flex justify-between items-end mb-2">
+                    <div>
+                        <h4 className="font-bold text-slate-800 text-sm">{project.name}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                        Raised: <span className="font-semibold text-slate-900">₹{project.raised.toLocaleString()}</span> • 
+                        Goal: <span className="text-slate-400">₹{project.goal.toLocaleString()}</span>
+                        </p>
+                    </div>
+                    <span className="text-xs font-bold text-slate-600">{project.percent}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                        className={`h-full rounded-full transition-all duration-1000 ${project.color}`} 
+                        style={{ width: `${project.percent}%` }}
+                    ></div>
+                    </div>
+                </div>
+                ))}
+            </div>
+        </div>
+
+        {/* 3. EMERGENCY CALLOUT */}
+        <div>
+            <h3 className="font-bold text-slate-900 mb-4 opacity-0">.</h3>
+            <div className="bg-orange-50 border border-orange-100 rounded-xl p-6 h-[calc(100%-2rem)] flex flex-col justify-between">
+                <div>
+                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+                        <AlertTriangle className="text-orange-600"/>
+                    </div>
+                    <h4 className="font-bold text-orange-900 mb-2">Emergency Relief</h4>
+                    <p className="text-sm text-orange-800/80 leading-relaxed">
+                        Flood relief efforts active in Gujarat. 500 families need food packets and medical kits immediately.
+                    </p>
+                </div>
+                <Button className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold cursor-pointer">
+                    Donate to Relief
+                </Button>
+            </div>
+        </div>
+      </div>
+
+      {/* 4. MAKE A DONATION (The Upgraded Form) */}
+      <GlassCard title="Make a Contribution" subtitle="Secure, tax-deductible, and transparent.">
+        <Tabs defaultValue="money" className="mt-6">
+          <TabsList className="grid w-full grid-cols-3 bg-slate-100 p-1 rounded-xl">
+            <TabsTrigger value="money" className="rounded-lg cursor-pointer">Money</TabsTrigger>
+            <TabsTrigger value="inkind" className="rounded-lg cursor-pointer">In-Kind</TabsTrigger>
+            <TabsTrigger value="service" className="rounded-lg cursor-pointer">Service</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="money" className="space-y-4 mt-4">
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">Amount (₹)</label>
-              <Input
-                type="number"
-                placeholder="5000"
-                value={donationAmount}
-                onChange={(e) => setDonationAmount(e.target.value)}
-              />
-              {donationAmount && ocrStatus.includes('Found Total') && (
-                <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" /> Auto-filled from your uploaded bill
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">Purpose</label>
-              <select className="w-full p-2 rounded-lg border border-gray-200 bg-white cursor-pointer">
-                <option>Education</option><option>Healthcare</option><option>General Fund</option>
-              </select>
-            </div>
-            <Button className="w-full text-white cursor-pointer" style={{ backgroundColor: '#3366FF' }} onClick={handleProcessDonation}>
-              Donate Now
-            </Button>
-          </TabsContent>
-
-          {/* In-Kind & Service Tabs (Simplified for brevity) */}
-          <TabsContent value="inkind" className="space-y-4 mt-4">
-             <div className="p-4 text-center text-gray-500 bg-gray-50 rounded">In-Kind Form Placeholder</div>
-          </TabsContent>
-          <TabsContent value="service" className="space-y-4 mt-4">
-             <div className="p-4 text-center text-gray-500 bg-gray-50 rounded">Service Form Placeholder</div>
-          </TabsContent>
-        </Tabs>
-      </GlassCard>
-
-      {/* OCR Scanner */}
-      <GlassCard title="Bill OCR Scanner" subtitle="Upload receipt to extract details">
-        <div className="mt-4 space-y-4">
-          {!imagePreview ? (
-            <Dropzone
-              multiple={false}
-              accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-              onDrop={async (acceptedFiles) => {
-                if (acceptedFiles[0]) {
-                  setOcrStatus('Processing...');
-                  setExtractedText('');
-                  const worker = await createWorker('eng');
-                  const { data: { text } } = await worker.recognize(acceptedFiles[0]);
-                  await worker.terminate();
-                  const details = extractBillDetails(text);
-                  setExtractedText(text.trim());
-                  setImagePreview(URL.createObjectURL(acceptedFiles[0]));
-                  if (details.amount) {
-                    setOcrStatus(`Found Total: ₹${details.amount}`);
-                    setDonationAmount(details.amount);
-                    alert(`Smart Scan Success! Total ₹${details.amount} extracted.`);
-                  } else {
-                    setOcrStatus('Extracted (No total found)');
-                  }
-                }
-              }}
-            >
-              {({ getRootProps, getInputProps }) => (
-                <div {...getRootProps()} className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors cursor-pointer">
-                  <input {...getInputProps()} />
-                  <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-lg font-medium text-gray-900">Drop bill image here</p>
+          {/* --- MONEY TAB --- */}
+          <TabsContent value="money" className="mt-6 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Left: Personal Details */}
+                <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Donor Details</h4>
+                    <div className="relative">
+                        <User className="absolute left-3 top-3 text-slate-400 w-4 h-4"/>
+                        <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="Full Name *" className="pl-10"/>
+                    </div>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-3 text-slate-400 w-4 h-4"/>
+                        <Input name="mobile" value={formData.mobile} onChange={handleInputChange} placeholder="Mobile Number *" className="pl-10"/>
+                    </div>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-3 text-slate-400 w-4 h-4"/>
+                        <Input name="email" value={formData.email} onChange={handleInputChange} placeholder="Email (Optional)" className="pl-10"/>
+                    </div>
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-3 text-slate-400 w-4 h-4"/>
+                        <Input name="address" value={formData.address} onChange={handleInputChange} placeholder="City / Address" className="pl-10"/>
+                    </div>
                 </div>
-              )}
-            </Dropzone>
-          ) : (
-            <div className="grid grid-cols-2 gap-6">
-              <img src={imagePreview} alt="Bill" className="max-w-full h-48 object-contain rounded-lg border" />
-              <div>
-                <p className="text-sm font-medium text-gray-700">Status: {ocrStatus}</p>
-                <Button variant="outline" size="sm" onClick={handleRemoveImage} className="mt-2 text-red-600 border-red-200">
-                  <Trash2 className="w-4 h-4 mr-2" /> Remove
-                </Button>
-              </div>
+
+                {/* Right: Payment Details */}
+                <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Donation Details</h4>
+                    
+                    {/* Amount Field with Min Value Logic */}
+                    <div className="relative">
+                        <IndianRupee className="absolute left-3 top-3 text-slate-400 w-4 h-4"/>
+                        <Input 
+                            name="amount" 
+                            type="number" 
+                            value={formData.amount} 
+                            onChange={handleInputChange} 
+                            placeholder="Amount (Min ₹100) *" 
+                            className="pl-10 font-bold text-slate-700"
+                        />
+                    </div>
+                    {formData.amount && Number(formData.amount) < 100 && (
+                        <p className="text-[10px] text-red-500 font-bold ml-1">⚠️ Minimum donation is ₹100</p>
+                    )}
+
+                    <div className="relative">
+                        <Tag className="absolute left-3 top-3.5 text-slate-400 w-4 h-4"/>
+                        <select name="purpose" value={formData.purpose} onChange={handleInputChange} className="w-full pl-10 pr-4 py-2.5 rounded-md border border-slate-200 bg-white text-sm text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer">
+                            <option>General Fund (Unrestricted)</option>
+                            <option>Vidya Shakti (Education)</option>
+                            <option>Drishti Eye Camp (Healthcare)</option>
+                            <option>Annapoorna (Hunger Relief)</option>
+                        </select>
+                    </div>
+
+                    <div className="relative">
+                        <FileText className="absolute left-3 top-3 text-slate-400 w-4 h-4"/>
+                        <Input name="pan" value={formData.pan} onChange={handleInputChange} placeholder="PAN (For 80G Tax Benefit)" className="pl-10"/>
+                    </div>
+
+                    {/* Mode Selector */}
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                        {['UPI', 'Card', 'Bank'].map(mode => (
+                            <button 
+                                key={mode} 
+                                onClick={() => setFormData(prev => ({...prev, paymentMethod: mode}))}
+                                className={`text-xs font-bold py-2 rounded-lg border transition-all ${formData.paymentMethod === mode ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                            >
+                                {mode}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
-          )}
-        </div>
+
+            <Button 
+                className="w-full py-6 text-lg font-bold text-white shadow-xl shadow-blue-500/20 rounded-xl mt-6 cursor-pointer" 
+                style={{ backgroundColor: '#3366FF' }} 
+                onClick={handleMoneyDonation}
+            >
+                Donate ₹{formData.amount || '0'} Now
+            </Button>
+            <p className="text-center text-xs text-slate-400 mt-2 flex items-center justify-center gap-1">
+               <CheckCircle2 size={12} className="text-emerald-500"/> Secure SSL • 80G Receipt Generated Instantly
+            </p>
+          </TabsContent>
+
+          {/* --- IN-KIND TAB --- */}
+          <TabsContent value="inkind" className="mt-6 space-y-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <label className="text-sm font-semibold">Item Details</label>
+                    <Input name="itemName" value={formData.itemName} onChange={handleInputChange} placeholder="Item Name (e.g. Blankets, Rice)"/>
+                    <Input name="quantity" value={formData.quantity} onChange={handleInputChange} placeholder="Quantity (e.g. 50 kg)"/>
+                </div>
+                <div className="space-y-4">
+                    <label className="text-sm font-semibold">Logistics</label>
+                    <select className="w-full p-2.5 rounded-md border border-slate-200 text-sm">
+                        <option>I will drop off at NGO center</option>
+                        <option>Request Pickup (Large Quantity)</option>
+                    </select>
+                    <Input type="date" className="w-full"/>
+                </div>
+             </div>
+             <Button onClick={handleInKindSubmit} className="w-full bg-teal-600 hover:bg-teal-700 text-white cursor-pointer">Submit In-Kind Offer</Button>
+          </TabsContent>
+
+          {/* --- SERVICE TAB --- */}
+          <TabsContent value="service" className="mt-6 space-y-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <label className="text-sm font-semibold">Service Type</label>
+                    <select name="serviceType" onChange={handleInputChange} className="w-full p-2.5 rounded-md border border-slate-200 text-sm">
+                        <option>Teaching / Tutoring</option>
+                        <option>Medical Checkup</option>
+                        <option>Elderly Care</option>
+                        <option>Administrative Help</option>
+                    </select>
+                </div>
+                <div className="space-y-4">
+                    <label className="text-sm font-semibold">Availability</label>
+                    <Input name="hours" value={formData.hours} onChange={handleInputChange} placeholder="Hours per week"/>
+                    <div className="flex gap-4">
+                        <label className="flex items-center gap-2 text-sm"><input type="checkbox"/> Weekends</label>
+                        <label className="flex items-center gap-2 text-sm"><input type="checkbox"/> Weekdays</label>
+                    </div>
+                </div>
+             </div>
+             <Button onClick={handleServiceSubmit} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer">Register as Volunteer</Button>
+          </TabsContent>
+
+        </Tabs>
       </GlassCard>
     </div>
   );
+}
+
+// Helper Icon Component
+function TargetIcon() {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+    )
 }

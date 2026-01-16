@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Upload, ShieldCheck, ShieldAlert, ScanLine, 
   CheckCircle2, AlertTriangle, X, Wallet, 
-  PieChart, History, Loader2, Keyboard, Lock
+  History, Loader2, Keyboard, Lock, Building2, Search
 } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 
@@ -30,8 +30,12 @@ export default function ExpenseLockboxView() {
   const [scanProgress, setScanProgress] = useState(0);
   const [violation, setViolation] = useState<string | null>(null);
   const [isFormReady, setIsFormReady] = useState(false);
+  
+  // Vendor Verification State
+  const [verifyingVendor, setVerifyingVendor] = useState(false);
+  const [vendorStatus, setVendorStatus] = useState<'idle' | 'verified' | 'blacklisted'>('idle');
 
-  // 🟢 1. STRICT FUND RULES
+  // 1. STRICT FUND RULES
   const FUNDS_CONFIG: Fund[] = [
     { 
       id: 'F1', name: 'General Operating Fund', type: 'UNRESTRICTED', initialBalance: 400000,
@@ -47,13 +51,13 @@ export default function ExpenseLockboxView() {
     },
   ];
 
-  // 🟢 2. HISTORY
+  // 2. HISTORY
   const [history, setHistory] = useState<ExpenseLog[]>([
     { id: 'E1', vendor: 'City Stationery', amount: 2500, project: 'Vidya Shakti', fundId: 'F2', date: 'Yesterday', status: 'APPROVED' },
     { id: 'E2', vendor: 'Taj Hotel (Party)', amount: 15000, project: 'Drishti Eye Camp', fundId: 'F3', date: '10 Jan', status: 'REJECTED' },
   ]);
 
-  // 🟢 3. BALANCE CALCULATION
+  // 3. BALANCE CALCULATION
   const funds = useMemo(() => {
     return FUNDS_CONFIG.map(fund => {
       const spent = history
@@ -64,7 +68,13 @@ export default function ExpenseLockboxView() {
   }, [history]);
 
   const [formData, setFormData] = useState({
-    vendor: '', amount: '', date: '', fundId: '', category: '', imagePreview: '' as string | null
+    vendor: '', 
+    gstin: '', 
+    amount: '', 
+    date: '', 
+    fundId: '', 
+    category: '', 
+    imagePreview: '' as string | null
   });
 
   // --- OCR LOGIC ---
@@ -75,19 +85,20 @@ export default function ExpenseLockboxView() {
     setActiveInputTab('ocr');
     const objectUrl = URL.createObjectURL(file);
     
-    // Reset fields to avoid confusion from previous scans
     setFormData({ 
       vendor: 'Scanning...', 
+      gstin: '', 
       amount: '...', 
       date: '', 
-      fundId: '', // 🟢 Reset to blank
-      category: '', // 🟢 Reset to blank
+      fundId: '', 
+      category: '', 
       imagePreview: objectUrl 
     });
     
     setIsScanning(true);
     setScanProgress(0);
     setIsFormReady(false);
+    setVendorStatus('idle'); // Reset verification
 
     Tesseract.recognize(
       file, 'eng',
@@ -105,32 +116,27 @@ export default function ExpenseLockboxView() {
   };
 
   const parseBillData = (text: string) => {
-    // 1. Improved Amount Extraction (Looks for currency symbols or Total keywords)
-    // Matches: "Total: 1,200.00" or "₹ 500"
     const totalMatch = text.match(/(?:Total|Amount|Net|Payable|₹|Rs\.?)[\s:]*([\d,]+\.?\d*)/i);
     let extractedAmount = '';
 
     if (totalMatch && totalMatch[1]) {
       extractedAmount = totalMatch[1].replace(/,/g, '');
-    } else {
-      // Fallback: Largest number
-      const numbers = text.match(/\d{1,3}(,\d{3})*(\.\d{2})/g);
-      if (numbers) {
-        const values = numbers.map(n => parseFloat(n.replace(/,/g, ''))).filter(n => !isNaN(n));
-        if (values.length > 0) extractedAmount = Math.max(...values).toString();
-      }
     }
 
     const dateMatch = text.match(/\d{2}[/-]\d{2}[/-]\d{4}/);
+    
+    // regex for standard GSTIN format
+    const gstinMatch = text.match(/\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}/);
+    
     const lines = text.split('\n').filter(line => line.trim().length > 3);
     const vendorName = lines[0] || "Unknown Vendor";
 
     setFormData(prev => ({
       ...prev,
       vendor: vendorName.substring(0, 25),
+      gstin: gstinMatch ? gstinMatch[0] : '', // Auto-fill if found
       amount: extractedAmount,
       date: dateMatch ? dateMatch[0] : new Date().toISOString().split('T')[0],
-      // 🟢 CRITICAL: Keep these blank so user MUST choose
       fundId: '',
       category: ''
     }));
@@ -139,10 +145,38 @@ export default function ExpenseLockboxView() {
   const enableManualEntry = () => {
     setActiveInputTab('manual');
     setIsFormReady(true);
-    setFormData({ vendor: '', amount: '', date: new Date().toISOString().split('T')[0], fundId: '', category: '', imagePreview: null });
+    setVendorStatus('idle');
+    setFormData({ vendor: '', gstin: '', amount: '', date: new Date().toISOString().split('T')[0], fundId: '', category: '', imagePreview: null });
   };
 
-  // --- VALIDATION LOGIC ---
+  // 🟢 VENDOR VERIFICATION LOGIC (India Level Prototype)
+  const verifyVendor = () => {
+    const inputGstin = formData.gstin.trim().toUpperCase();
+    
+    if (!inputGstin) {
+        alert("Please enter a GSTIN");
+        return;
+    }
+
+    setVerifyingVendor(true);
+    
+    // Mock API Call delay
+    setTimeout(() => {
+        setVerifyingVendor(false);
+        
+        // 🟢 Regex for Valid Indian GSTIN:
+        // 2 numbers (State) + 5 letters (PAN) + 4 numbers (PAN) + 1 letter (PAN) + 1 Entity + Z + 1 Checksum
+        const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+        if (gstinRegex.test(inputGstin)) {
+            setVendorStatus('verified');
+        } else {
+            setVendorStatus('blacklisted');
+        }
+    }, 1500);
+  };
+
+  // --- COMPLIANCE LOGIC ---
   useEffect(() => {
     if (!formData.fundId || !formData.category) {
       setViolation(null);
@@ -156,7 +190,6 @@ export default function ExpenseLockboxView() {
       return;
     }
 
-    // Strict Check: Category must be in the allowed list
     if (!selectedFund.allowedCategories.includes(formData.category)) {
       setViolation(`MISUSE BLOCK: '${selectedFund.name}' cannot pay for '${formData.category}'.`);
     } else {
@@ -184,8 +217,9 @@ export default function ExpenseLockboxView() {
     };
     
     setHistory([newLog, ...history]);
-    setFormData({ vendor: '', amount: '', date: '', fundId: '', category: '', imagePreview: null });
+    setFormData({ vendor: '', gstin: '', amount: '', date: '', fundId: '', category: '', imagePreview: null });
     setIsFormReady(false);
+    setVendorStatus('idle');
     setActiveInputTab('ocr');
     alert("Payment Approved! Ledger Updated.");
   };
@@ -200,7 +234,7 @@ export default function ExpenseLockboxView() {
             <ShieldCheck className="text-emerald-600" /> Expense Lockbox
           </h2>
           <p className="text-slate-500 text-sm mt-1">
-            AI-powered compliance engine. Upload bills to validate against fund mandates.
+            AI-powered compliance engine. Verify Vendors & Funds before release.
           </p>
         </div>
       </div>
@@ -237,24 +271,24 @@ export default function ExpenseLockboxView() {
           {activeInputTab === 'ocr' ? (
             <div className={`relative h-96 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden bg-slate-50 border-slate-300 ${isScanning ? 'pointer-events-none' : ''}`}>
                {isScanning ? (
-                  <div className="text-center z-10 space-y-4">
-                    <Loader2 className="animate-spin text-blue-600 w-12 h-12 mx-auto"/>
-                    <p className="text-blue-700 font-bold animate-pulse">Reading Bill Details...</p>
-                    <div className="w-48 h-2 bg-gray-200 rounded-full mx-auto overflow-hidden"><div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${scanProgress}%` }}></div></div>
-                  </div>
+                 <div className="text-center z-10 space-y-4">
+                   <Loader2 className="animate-spin text-blue-600 w-12 h-12 mx-auto"/>
+                   <p className="text-blue-700 font-bold animate-pulse">Reading Bill Details...</p>
+                   <div className="w-48 h-2 bg-gray-200 rounded-full mx-auto overflow-hidden"><div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${scanProgress}%` }}></div></div>
+                 </div>
                ) : formData.imagePreview ? (
-                  <div className="relative w-full h-full group">
-                    <img src={formData.imagePreview} alt="Bill" className="w-full h-full object-contain p-4"/>
-                    <button onClick={() => { setFormData({...formData, imagePreview: null}); setIsFormReady(false); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full shadow-md text-slate-600 hover:text-red-600"><X size={18}/></button>
-                  </div>
+                 <div className="relative w-full h-full group">
+                   <img src={formData.imagePreview} alt="Bill" className="w-full h-full object-contain p-4"/>
+                   <button onClick={() => { setFormData({...formData, imagePreview: null}); setIsFormReady(false); }} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full shadow-md text-slate-600 hover:text-red-600"><X size={18}/></button>
+                 </div>
                ) : (
-                  <>
-                    <input type="file" accept="image/*" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                    <div className="text-center space-y-4">
-                      <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto hover:scale-110 transition-transform"><Upload size={32}/></div>
-                      <div><h3 className="font-bold text-slate-700">Drop Invoice Here</h3><p className="text-sm text-slate-400 mt-1">We'll auto-fill the details</p></div>
-                    </div>
-                  </>
+                 <>
+                   <input type="file" accept="image/*" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                   <div className="text-center space-y-4">
+                     <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto hover:scale-110 transition-transform"><Upload size={32}/></div>
+                     <div><h3 className="font-bold text-slate-700">Drop Invoice Here</h3><p className="text-sm text-slate-400 mt-1">We'll auto-fill GSTIN & Amount</p></div>
+                   </div>
+                 </>
                )}
             </div>
           ) : (
@@ -282,14 +316,50 @@ export default function ExpenseLockboxView() {
               <CheckCircle2 className="text-blue-600"/> 2. Verify & Categorize
             </h3>
 
+            {/* 🟢 VENDOR & GSTIN SECTION */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                <div className="flex justify-between items-center">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <Building2 size={14}/> Vendor Details
+                    </h4>
+                    {vendorStatus === 'verified' && <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded flex items-center gap-1"><CheckCircle2 size={10}/> GSTIN VERIFIED</span>}
+                    {vendorStatus === 'blacklisted' && <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-1 rounded flex items-center gap-1"><ShieldAlert size={10}/> INVALID FORMAT</span>}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <input value={formData.vendor} onChange={e => setFormData({...formData, vendor: e.target.value})} className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold focus:border-blue-500 outline-none" placeholder="Vendor Name"/>
+                    </div>
+                    <div className="flex gap-2">
+                        <input 
+                            value={formData.gstin} 
+                            onChange={e => {
+                                setFormData({...formData, gstin: e.target.value.toUpperCase()});
+                                setVendorStatus('idle'); // Reset if changed
+                            }} 
+                            className={`w-full p-2.5 bg-white border rounded-lg text-sm font-mono focus:border-blue-500 outline-none uppercase ${vendorStatus === 'verified' ? 'border-emerald-500 text-emerald-700' : 'border-slate-300'}`} 
+                            placeholder="GSTIN (e.g. 27AAAA...)"
+                            maxLength={15}
+                        />
+                        <button 
+                            onClick={verifyVendor} 
+                            disabled={verifyingVendor || vendorStatus === 'verified'}
+                            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${vendorStatus === 'verified' ? 'bg-emerald-100 text-emerald-600 cursor-default' : 'bg-slate-800 text-white hover:bg-slate-900'}`}
+                        >
+                            {verifyingVendor ? <Loader2 size={14} className="animate-spin"/> : vendorStatus === 'verified' ? 'OK' : 'Verify'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Vendor Name</label>
-                <input value={formData.vendor} onChange={e => setFormData({...formData, vendor: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:bg-white focus:border-blue-500 outline-none transition-all" placeholder="e.g. Uber Ride"/>
-              </div>
               <div>
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Amount (₹)</label>
                 <input type="number" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:bg-white focus:border-blue-500 outline-none transition-all" placeholder="0.00"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Expense Date</label>
+                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 focus:bg-white outline-none"/>
               </div>
             </div>
 
@@ -322,16 +392,23 @@ export default function ExpenseLockboxView() {
               </div>
             </div>
 
-            <div className={`p-4 rounded-xl border flex gap-3 items-start transition-all duration-300 ${!formData.fundId || !formData.category ? 'bg-gray-50 border-gray-200 text-gray-500' : violation ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
-                {!formData.fundId || !formData.category ? <AlertTriangle size={20} className="shrink-0 mt-0.5"/> : violation ? <ShieldAlert size={20} className="shrink-0 mt-0.5"/> : <CheckCircle2 size={20} className="shrink-0 mt-0.5"/>}
+            {/* STATUS & ACTION AREA */}
+            <div className={`p-4 rounded-xl border flex gap-3 items-start transition-all duration-300 ${!formData.fundId || !formData.category ? 'bg-gray-50 border-gray-200 text-gray-500' : (violation || vendorStatus === 'blacklisted') ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+                {(violation || vendorStatus === 'blacklisted') ? <ShieldAlert size={20} className="shrink-0 mt-0.5"/> : <CheckCircle2 size={20} className="shrink-0 mt-0.5"/>}
                 <div>
-                   <p className="font-bold text-sm">{!formData.fundId || !formData.category ? "Awaiting Categorization..." : violation ? "Compliance Violation Detected" : "Compliance Check Passed"}</p>
-                   {violation && <p className="text-xs mt-1 leading-relaxed opacity-90">{violation}</p>}
+                    <p className="font-bold text-sm">
+                        {vendorStatus === 'blacklisted' ? "Vendor Verification Failed" : violation ? "Fund Compliance Violation" : !formData.fundId ? "Awaiting Details..." : "Ready for Approval"}
+                    </p>
+                    {(violation || vendorStatus === 'blacklisted') && <p className="text-xs mt-1 leading-relaxed opacity-90">{violation || "Vendor GSTIN invalid format."}</p>}
                 </div>
             </div>
 
-            <button onClick={handlePay} disabled={!!violation || !formData.fundId || !formData.category} className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md ${violation ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none' : (!formData.fundId ? 'bg-blue-100 text-blue-400 cursor-not-allowed shadow-none' : 'bg-[#3366FF] text-white hover:bg-blue-700 hover:shadow-lg')}`}>
-              {violation ? "Transfer Blocked by Policy" : "Approve & Record Expense"}
+            <button 
+                onClick={handlePay} 
+                disabled={!!violation || !formData.fundId || !formData.category || vendorStatus !== 'verified'} 
+                className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md ${(!formData.fundId || vendorStatus !== 'verified') ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' : 'bg-[#3366FF] text-white hover:bg-blue-700 hover:shadow-lg'}`}
+            >
+              {vendorStatus !== 'verified' ? "Verify Vendor First" : violation ? "Transfer Blocked" : "Approve & Record Expense"}
             </button>
           </div>
         </div>

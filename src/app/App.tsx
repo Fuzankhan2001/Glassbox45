@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
+// 🟢 FIX: Removed '/app' because App.tsx is already inside the app folder
 import { Homepage } from "./components/homepage";
 import StaffLogin from "./components/staff-login";
-
 import AdminDashboardView from './components/admin-dashboard-view';
 import { DonorLogin } from "./components/donor-login";
 import { DonorDashboardView } from "./components/donor-dashboard-view";
 import { DonorHistoryView } from "./components/donor-history-view";
-import { InKindTrackerView } from "./components/inkind-tracker-view";
+import { ImpactTimelineView } from "./components/impact-timeline-view";
 import { Button } from "./components/ui/button";
-import { Users, ArrowLeft, LayoutDashboard, History, Package, LogOut } from "lucide-react";
+import { Users, ArrowLeft, LayoutDashboard, History, LogOut, LineChart } from "lucide-react";
 
 type AppMode = "home" | "donor-login" | "donor-dashboard" | "admin-login"| "admin-dashboard";
-type DonorView = "dashboard" | "history" | "inkind-tracker";
+type DonorView = "dashboard" | "history" | "impact-timeline";
 
 export default function App() {
   const [appMode, setAppMode] = useState<AppMode>("home");
@@ -29,25 +29,25 @@ export default function App() {
     localStorage.removeItem("userName");
     setAppMode("home");
   };
-  // ------------------------------------------------------------------
-// ADMIN LOGIN ROUTE
-// ------------------------------------------------------------------
-if (appMode === "admin-login") {
-  return (
-    <StaffLogin
-      onSuccess={() => setAppMode("admin-dashboard")}
-      onBack={() => setAppMode("home")}
-    />
-  );
-}
 
   // ------------------------------------------------------------------
-  // 1. ADMIN DASHBOARD ROUTE (Directly from Homepage "Staff Login")
+  // ADMIN LOGIN ROUTE
+  // ------------------------------------------------------------------
+  if (appMode === "admin-login") {
+    return (
+      <StaffLogin
+        onSuccess={() => setAppMode("admin-dashboard")}
+        onBack={() => setAppMode("home")}
+      />
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // 1. ADMIN DASHBOARD ROUTE
   // ------------------------------------------------------------------
   if (appMode === "admin-dashboard") {
      return (
         <div className="relative">
-           {/* Admin Logout Button (Floating Top Right) */}
            <div className="fixed top-4 right-4 z-50">
               <Button 
                 onClick={() => setAppMode("home")}
@@ -67,8 +67,8 @@ if (appMode === "admin-login") {
   if (appMode === "home") {
     return (
       <Homepage 
-        onGetStarted={() => setAppMode("donor-login")} // Go to Donor Login
-        onAdminLogin={() => setAppMode("admin-login")} // Go to Admin login
+        onGetStarted={() => setAppMode("donor-login")} 
+        onAdminLogin={() => setAppMode("admin-login")} 
       />
     );
   }
@@ -143,10 +143,10 @@ if (appMode === "admin-login") {
                 </button>
 
                 <button
-                  onClick={() => setDonorView("inkind-tracker")}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${donorView === "inkind-tracker" ? "bg-[#3366FF] text-white shadow-sm" : "text-gray-700 hover:bg-white/40"}`}
+                  onClick={() => setDonorView("impact-timeline")}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${donorView === "impact-timeline" ? "bg-[#3366FF] text-white shadow-sm" : "text-gray-700 hover:bg-white/40"}`}
                 >
-                  <Package className="w-5 h-5" /> <span className="text-sm font-medium">In-Kind Tracker</span>
+                  <LineChart className="w-5 h-5" /> <span className="text-sm font-medium">Impact Timeline</span>
                 </button>
               </nav>
             </div>
@@ -156,7 +156,7 @@ if (appMode === "admin-login") {
           <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
             {donorView === "dashboard" && <DonorDashboardView />}
             {donorView === "history" && <DonorHistoryView />}
-            {donorView === "inkind-tracker" && <InKindTrackerView />}
+            {donorView === "impact-timeline" && <ImpactTimelineView />}
           </div>
         </div>
       </div>

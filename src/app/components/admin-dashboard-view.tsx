@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-
-//import React, { useState } from 'react';
 import { 
-  LayoutDashboard, Wallet, FileCheck, AlertTriangle, TrendingUp, 
-  Users, ArrowUpRight, ArrowDownRight, Ban, Calendar, Target
+  LayoutDashboard, Wallet, FileCheck, TrendingUp, 
+  Users, ArrowUpRight, ArrowDownRight, Ban, Calendar, Target,
+  Camera // 🟢 New Icon for Impact
 } from 'lucide-react';
 
-// 🟢 IMPORT YOUR SUB-VIEWS
+// 🟢 Sub-Views
 import IncomeIngressView from './income-ingress-view';
 import ExpenseLockboxView from './expense-lockbox-view';
+import { AdminImpactTimeline } from './admin-impact-timeline'; // 🟢 New Import
 
-// 🟢 1. MOCK DATA FOR DASHBOARD OVERVIEW
+// --- MOCK DATA ---
 const PROJECT_GOALS = [
   { name: "Vidya Shakti (Education)", goal: 500000, raised: 245000, color: "bg-blue-600" },
   { name: "Drishti Eye Camp", goal: 300000, raised: 150000, color: "bg-emerald-500" },
@@ -18,16 +18,17 @@ const PROJECT_GOALS = [
 ];
 
 const RECENT_ACTIVITY = [
-  { id: 1, type: 'expense', title: "Expense Approved", subtitle: "City Stationery • Vidya Shakti", amount: "-₹2,500", time: "2 hours ago" },
-  { id: 2, type: 'income', title: "Donation Received", subtitle: "Mukesh Gupta • Vidya Shakti", amount: "+₹5,000", time: "5 hours ago" },
-  { id: 3, type: 'blocked', title: "Transaction BLOCKED", subtitle: "Taj Hotel • Attempted via Medical Fund", amount: "₹15,000", time: "Yesterday", detail: "Restricted Fund Misuse" },
-  { id: 4, type: 'expense', title: "Expense Approved", subtitle: "Power Grid Corp • General Fund", amount: "-₹12,000", time: "Yesterday" },
-  { id: 5, type: 'income', title: "Donation Received", subtitle: "Ghanshyam Singh • Drishti Eye Camp", amount: "+₹1,00,000", time: "2 days ago" },
+  { id: 'static-1', type: 'expense', title: "Expense Approved", subtitle: "City Stationery • Vidya Shakti", amount: "-₹2,500", time: "2 hours ago" },
+  { id: 'static-2', type: 'income', title: "Donation Received", subtitle: "Mukesh Gupta • Vidya Shakti", amount: "+₹5,000", time: "5 hours ago" },
+  { id: 'static-3', type: 'blocked', title: "Transaction BLOCKED", subtitle: "Taj Hotel • Medical Fund Misuse", amount: "₹15,000", time: "Yesterday", detail: "Restricted Fund Misuse" },
+  { id: 'static-4', type: 'expense', title: "Expense Approved", subtitle: "Power Grid Corp • General Fund", amount: "-₹12,000", time: "Yesterday" },
+  { id: 'static-5', type: 'income', title: "Donation Received", subtitle: "Ghanshyam Singh • Drishti Eye Camp", amount: "+₹1,00,000", time: "2 days ago" },
 ];
 
-// 🟢 2. MAIN LAYOUT SHELL (Handles Navigation)
+// --- MAIN COMPONENT ---
 export default function AdminDashboardView() {
-  const [currentView, setCurrentView] = useState<'overview' | 'income' | 'lockbox' | 'vendor'>('overview');
+  // 🟢 Updated State to include 'impact'
+  const [currentView, setCurrentView] = useState<'overview' | 'income' | 'lockbox' | 'impact'>('overview');
 
   return (
     <div className="flex min-h-screen bg-[#F6FAFF] font-sans text-slate-800">
@@ -63,20 +64,14 @@ export default function AdminDashboardView() {
             icon={<FileCheck size={20}/>} 
             label="Expense Lockbox" 
           />
-          <NavButton 
-            active={currentView === 'vendor'} 
-            onClick={() => setCurrentView('vendor')}
-            icon={<Users size={20}/>} 
-            label="Vendor Guard" 
-          />
           
-          <div className="pt-4 mt-4 border-t border-gray-100">
-             <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-gray-50 cursor-pointer transition-all">
-                <AlertTriangle size={20}/>
-                <span className="flex-1 text-sm">Compliance Alerts</span>
-                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-             </div>
-          </div>
+          {/* 🟢 NEW: Impact Timeline Tab */}
+          <NavButton 
+            active={currentView === 'impact'} 
+            onClick={() => setCurrentView('impact')}
+            icon={<Camera size={20}/>} 
+            label="Impact Timeline" 
+          />
         </nav>
       </aside>
 
@@ -85,41 +80,44 @@ export default function AdminDashboardView() {
         {currentView === 'overview' && <AdminOverview />}
         {currentView === 'income' && <IncomeIngressView />}
         {currentView === 'lockbox' && <ExpenseLockboxView />}
-        {currentView === 'vendor' && <div className="p-10 text-center text-gray-400">Vendor Guard Component Coming Soon...</div>}
+        {/* 🟢 NEW: Render Impact View */}
+        {currentView === 'impact' && <AdminImpactTimeline />}
       </main>
     </div>
   );
 }
 
-// 🟢 3. DASHBOARD COMPONENT (The "Overview" Tab)
-
+// --- DASHBOARD OVERVIEW COMPONENT ---
 function AdminOverview() {
-  // Correct Math: 
-  // Restricted: 8,50,000 (Income) - 2,500 (Expense) = 8,47,500
-  // Unrestricted: 4,00,000 (Income) - 12,000 (Expense) = 3,88,000
   const [demoDonations, setDemoDonations] = useState<any[]>([]);
-useEffect(() => {
-  const data = localStorage.getItem("demo_donations");
-  console.log("ADMIN READ:", data);
-  if (data) {
-    setDemoDonations(JSON.parse(data));
-  }
-}, []);
+  
+  // LIVE SYNC: Read from local storage safely
+  useEffect(() => {
+    try {
+      const data = localStorage.getItem("demo_donations");
+      if (data) {
+        setDemoDonations(JSON.parse(data));
+      }
+    } catch (e) {
+      console.error("Error reading donations", e);
+    }
+  }, []);
 
-const stats = {
+  const stats = {
     totalAssets: "12,35,500", 
     restricted: "8,47,500", 
     unrestricted: "3,88,000" 
   };
-  const liveDonationActivity = demoDonations.map((donation) => ({
-  id: donation.id,
-  type: "income",
-  title: "Donation Received",
-  subtitle: `${donation.donorName} • ${donation.purpose}`,
-  amount: `+₹${donation.amount}`,
-  time: "Just now"
-}));
 
+  // Convert Donor Data Format to Admin Activity Feed Format
+  const liveDonationActivity = demoDonations.map((donation) => ({
+    id: donation.id,
+    type: "income",
+    title: "Donation Received",
+    subtitle: `${donation.donorName} • ${donation.purpose}`,
+    amount: `+₹${donation.amount}`,
+    time: "Just now"
+  }));
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -203,11 +201,11 @@ const stats = {
           
           <div className="flex-1 overflow-y-auto max-h-[350px]">
              <div className="divide-y divide-slate-50">
-  {[...liveDonationActivity, ...RECENT_ACTIVITY].map((log) => (
-    <LogItem key={log.id} {...log} />
-  ))}
-</div>
-
+               {/* MERGING LIVE AND STATIC DATA */}
+               {[...liveDonationActivity, ...RECENT_ACTIVITY].map((log) => (
+                 <LogItem key={log.id} {...log} />
+               ))}
+             </div>
           </div>
         </div>
 
@@ -216,7 +214,7 @@ const stats = {
   );
 }
 
-// --- SUB-COMPONENTS ---
+// --- HELPER COMPONENTS ---
 
 function NavButton({ active, onClick, icon, label }: any) {
   return (
